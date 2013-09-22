@@ -6,7 +6,7 @@ use ExtUtils::MakeMaker ();
 use Module::CPANfile;
 use version;
 
-our $VERSION = "0.02";
+our $VERSION = "0.03";
 
 sub import {
   my $class = shift;
@@ -54,6 +54,36 @@ sub import {
       );
 
       # XXX: better to use also META_MERGE when applicable?
+
+      # As a small bonus, remove params that the installed version
+      # of EUMM doesn't know, so that we can always write them
+      # in Makefile.PL without caring about EUMM version.
+      # (EUMM warns if it finds unknown parameters.)
+      # As EUMM 6.17 is our prereq, we can safely ignore the keys
+      # defined before 6.17.
+      {
+        last if _eumm('6.66_03');
+        if (my $r = delete $params{TEST_REQUIRES}) {
+          _merge(\%params, $r, 'BUILD_REQUIRES');
+        }
+        last if _eumm('6.56');
+        if (my $r = delete $params{BUILD_REQUIRES}) {
+          _merge(\%params, $r, 'PREREQ_PM');
+        }
+
+        last if _eumm('6.52');
+        delete $params{CONFIGURE_REQUIRES};
+
+        last if _eumm('6.47_01');
+        delete $params{MIN_PERL_VERSION};
+
+        last if _eumm('6.45_01');
+        delete $params{META_ADD};
+        delete $params{META_MERGE};
+
+        last if _eumm('6.30_01');
+        delete $params{LICENSE};
+      }
     }
 
     $orig->(%params);
@@ -123,7 +153,6 @@ ExtUtils::MakeMaker::CPANfile - cpanfile support for EUMM
 =head1 SYNOPSIS
 
     # Makefile.PL
-    use ExtUtils::MakeMaker;
     use ExtUtils::MakeMaker::CPANfile;
     
     WriteMakefile(
@@ -141,11 +170,23 @@ ExtUtils::MakeMaker::CPANfile - cpanfile support for EUMM
 
 ExtUtils::MakeMaker::CPANfile loads C<cpanfile> in your distribution
 and modifies parameters for C<WriteMakefile> in your Makefile.PL.
-Just use it after L<ExtUtils::MakeMaker>, and prepare C<cpanfile>.
+Just use it instead of L<ExtUtils::MakeMaker> (which should be
+loaded internally), and prepare C<cpanfile>.
+
+As of version 0.03, ExtUtils::MakeMaker::CPANfile also removes
+WriteMakefile parameters that the installed version of
+ExtUtils::MakeMaker doesn't know, to avoid warnings.
 
 =head1 LIMITATION
 
 As of this writing, complex version ranges are simply ignored.
+
+=head1 FOR MODULE AUTHORS
+
+Thoguh the minimum version requirement of ExtUtils::MakeMaker is
+arbitrary set to 6.17 (the one bundled in Perl 5.8.1), you need
+at least EUMM 6.52 (with CONFIGURE_REQUIRES support) when you
+release a distribution.
 
 =head1 LICENSE
 
