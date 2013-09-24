@@ -3,10 +3,11 @@ package ExtUtils::MakeMaker::CPANfile;
 use strict;
 use warnings;
 use ExtUtils::MakeMaker ();
+use File::Spec::Functions qw/catfile rel2abs/;
 use Module::CPANfile;
 use version;
 
-our $VERSION = "0.03";
+our $VERSION = "0.04";
 
 sub import {
   my $class = shift;
@@ -14,7 +15,11 @@ sub import {
   my $writer = sub {
     my %params = @_;
 
-    if (my $file = eval { Module::CPANfile->load }) {
+    # Do nothing if not called from Makefile.PL
+    my ($caller, $file, $line) = caller;
+    (my $root = rel2abs($file)) =~ s/Makefile\.PL$// or return;
+
+    if (my $file = eval { Module::CPANfile->load(catfile($root, "cpanfile")) }) {
       my $prereqs = $file->prereqs;
 
       # Runtime requires => PREREQ_PM
@@ -49,7 +54,7 @@ sub import {
       # Add myself to configure requires (if possible)
       _merge(
          \%params,
-         {'ExtUtils::MakeMaker::CPANfile' => 0},
+         {'ExtUtils::MakeMaker::CPANfile' => $VERSION},
          _eumm('6.52') ? 'CONFIGURE_REQUIRES' : undef,
       );
 
@@ -84,6 +89,9 @@ sub import {
         last if _eumm('6.30_01');
         delete $params{LICENSE};
       }
+    } else {
+        print "cpanfile is not available: $@\n";
+        exit 0; # N/A
     }
 
     $orig->(%params);
