@@ -7,7 +7,7 @@ use File::Spec::Functions qw/catfile rel2abs/;
 use Module::CPANfile;
 use version;
 
-our $VERSION = "0.04";
+our $VERSION = "0.05";
 
 sub import {
   my $class = shift;
@@ -17,7 +17,7 @@ sub import {
 
     # Do nothing if not called from Makefile.PL
     my ($caller, $file, $line) = caller;
-    (my $root = rel2abs($file)) =~ s/Makefile\.PL$// or return;
+    (my $root = rel2abs($file)) =~ s/Makefile\.PL$//i or return;
 
     if (my $file = eval { Module::CPANfile->load(catfile($root, "cpanfile")) }) {
       my $prereqs = $file->prereqs;
